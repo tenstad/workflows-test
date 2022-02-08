@@ -1,0 +1,89 @@
+name: Reusable deploy
+
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        required: true
+        type: string
+      caller_sha:
+        required: true
+        type: string
+      repo:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      cluster:
+        required: true
+        type: string
+      actor:
+        required: true
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
+      DIGDIR_FDK_AUTODEPLOY:
+        required: true
+      SLACK_WEBHOOK_URL:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }} environment
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Apply Helm template
+      run: |
+        helm repo add fdk https://informasjonsforvaltning.github.io/helm-chart/
+        helm fetch --untar --untardir ./helm fdk/${{ inputs.app_name }}
+        helm template --set DOCKER_IMAGE_NAME="eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:${{ inputs.caller_sha }}" \
+        -f ./helm/${{ inputs.app_name }}/values/${{ inputs.environment }}.yaml \
+        ./helm/${{ inputs.app_name }}/ > ./kubectlapply.yaml
+        chmod o+w ./kubectlapply.yaml
+        cat kubectlapply.yaml
+
+    - name: Auth gcloud CLI for deploy
+      uses: google-github-actions/auth@main
+      with:
+        credentials_json: ${{ secrets.DIGDIR_FDK_AUTODEPLOY }}
+
+    - name: Deploy to GCP & check status
+      run: |
+        gcloud container clusters get-credentials ${{ inputs.cluster }} --region europe-north1-a --project ${{ inputs.cluster }}
+        kubectl apply -f ./kubectlapply.yaml --force
+        if ! kubectl --namespace=${{ inputs.environment }} rollout status deployment ${{ inputs.app_name }}; then
+          kubectl --namespace=${{ inputs.environment }} rollout undo deployment ${{ inputs.app_name }}
+          kubectl --namespace=${{ inputs.environment }} rollout status deployment ${{ inputs.app_name }}
+          exit 1
+        fi
+
+    - name: Notify slack
+      id: slack
+      uses: slackapi/slack-github-action@v1
+      with:
+        payload: |
+          {
+            "text": "GitHub Action deploy result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
+            "blocks": [
+              {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "Application: ${{ inputs.app_name }} | Environment: ${{ inputs.environment }}\nAuthor: ${{ inputs.actor }}"
+              },          
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "GitHub Action deploy result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      if: always()
