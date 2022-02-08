@@ -33,8 +33,15 @@ jobs:
   deploy:
     name: Deploy to ${{ inputs.environment }} environment
     runs-on: ubuntu-latest
+    env:
+      notify_all: ''
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.GH_TOKEN }}
 
     - name: Apply Helm template
       run: |
@@ -47,7 +54,7 @@ jobs:
         cat kubectlapply.yaml
 
     - name: Auth gcloud CLI for deploy
-      uses: google-github-actions/auth@main
+      uses: google-github-actions/auth@v0
       with:
         credentials_json: ${{ secrets.DIGDIR_FDK_AUTODEPLOY }}
 
@@ -67,19 +74,36 @@ jobs:
       with:
         payload: |
           {
-            "text": "GitHub Action deploy result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
-            "blocks": [
+            "attachments": [
               {
-              "type": "section",
-              "text": {
-                "type": "mrkdwn",
-                "text": "Application: ${{ inputs.app_name }} | Environment: ${{ inputs.environment }}\nAuthor: ${{ inputs.actor }}"
-              },          
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "GitHub Action deploy result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+                "color": "${{ env.slack_color }}",
+                "blocks": [
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": "${{ env.notify_all }}${{ env.slack_emoji }} ${{ env.slack_text }} GitHub Actions\n*Application:* ${{ inputs.app_name }}\n*Environment:* ${{ inputs.environment }}"
+                    },
+                    "fields": [
+                      {
+                          "type": "mrkdwn",
+                          "text": "*commit:* \n<${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.caller_sha }} | ${{ env.SHORT_SHA }} >"
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": "*author:* \n${{ inputs.actor }}"
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": "*workflow:* \n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} | ${{ github.workflow }}>"
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": "*Pull request:* \n<${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.number }} | ${{ github.ref_name }}>"
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           }
