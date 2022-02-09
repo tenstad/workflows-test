@@ -30,7 +30,7 @@ on:
         required: true
 
 jobs:
-  deploy:
+  helm-and-deploy:
     name: Deploy to ${{ inputs.environment }} environment
     runs-on: ubuntu-latest
     env:
