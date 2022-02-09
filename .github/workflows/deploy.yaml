@@ -37,11 +37,11 @@ jobs:
       notify_all: ''
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          repository: ${{ inputs.repo }}
-          token: ${{ secrets.GH_TOKEN }}
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        repository: ${{ inputs.repo }}
+        token: ${{ secrets.GH_TOKEN }}
 
     - name: Apply Helm template
       run: |
