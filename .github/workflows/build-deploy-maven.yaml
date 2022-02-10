@@ -51,6 +51,27 @@ jobs:
     - name: Create short sha
       run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
 
+    - name: Set event vars if PR
+      if: github.event_name == 'pull_request'
+      run: | 
+        echo "event_path=pull/${{ github.event.number }}" >> $GITHUB_ENV
+        echo "event_text=Pull request" >> $GITHUB_ENV
+        echo "event_name=${{ github.head_ref }}" >> $GITHUB_ENV
+
+    - name: Set event vars if push
+      if: github.event_name == 'push'
+      run: |
+        echo "event_path=commit/${{ inputs.caller_sha }}" >> $GITHUB_ENV
+        echo "event_text=Push" >> $GITHUB_ENV
+        echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV
+
+    - name: Set env vars if none of the above
+      if: github.event_name != 'pull_request' && github.event_name != 'push'
+      run: |
+        echo "event_path=commit/${{ inputs.caller_sha }}" >> $GITHUB_ENV
+        echo "event_text=${{ github.event_name }}" >> $GITHUB_ENV
+        echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV
+
     - name: Setup java jdk
       if: ${{ inputs.java_version }}
       uses: actions/setup-java@v1
@@ -82,30 +103,29 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@v1
 
-    - name: Docker meta staging
-      if: ${{ inputs.environment }} == 'staging'
-      id: meta
-      uses: docker/metadata-action@v3
-      with:
-        images: eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}
-        flavor: |
-          latest=false
-        tags: |
-          type=raw,value=staging_latest
-          type=raw,value=${{ github.sha }},priority=1000
-          type=ref,event=branch
+    - name: Meta input
+      if: ${{ inputs.environment == 'prod' }}
+      run: |
+        echo "image_tag=latest" >> $GITHUB_ENV
+        echo "meta_flavor=true" >> $GITHUB_ENV
 
-    - name: Docker meta prod
-      if: ${{ inputs.environment }} == 'prod'
+    - name: Meta input if not prod
+      if: ${{ inputs.environment != 'prod' }}
+      run: | 
+        echo "image_tag=${{ inputs.environment }}_latest" >> $GITHUB_ENV
+        echo "meta_flavor=false" >> $GITHUB_ENV
+
+    - name: Docker meta
       id: meta
       uses: docker/metadata-action@v3
       with:
         images: eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}
         flavor: |
-          latest=true
+          latest=${{ env.meta_flavor }}
         tags: |
+          type=raw,value=${{ env.image_tag }}
           type=raw,value=${{ github.sha }},priority=1000
-          type=ref,event=branch          
+          type=ref,event=branch         
 
     - name: Build and push
       id: docker_build
@@ -138,7 +158,7 @@ jobs:
 
     - name: Deploy to GCP & check status
       run: |
-        gcloud container clusters get-credentials digdir-fdk-dev --region europe-north1-a --project digdir-fdk-dev
+        gcloud container clusters get-credentials ${{ inputs.cluster }} --region europe-north1-a --project ${{ inputs.cluster }}
         kubectl apply -f ./kubectlapply.yaml --force
         if ! kubectl --namespace=${{ inputs.environment }} rollout status deployment ${{ inputs.app_name }}; then
           kubectl --namespace=${{ inputs.environment }} rollout undo deployment ${{ inputs.app_name }}
@@ -169,7 +189,7 @@ jobs:
       run: |
         echo "slack_emoji=:warning:" >> $GITHUB_ENV
         echo "slack_text=Cancelled" >> $GITHUB_ENV
-        echo "slack_color=#daa038" >> $GITHUB_ENV  
+        echo "slack_color=#daa038" >> $GITHUB_ENV
 
     - name: Notify slack
       id: slack
@@ -202,7 +222,7 @@ jobs:
                       },
                       {
                           "type": "mrkdwn",
-                          "text": "*Pull request:* \n<${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.number }} | ${{ github.ref_name }}>"
+                          "text": "*${{ env.event_text }}:* \n<${{ github.server_url }}/${{ github.repository }}/${{ env.event_path }} | ${{ env.event_name }}>"
                       }
                     ]
                   }

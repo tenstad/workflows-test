@@ -43,6 +43,23 @@ jobs:
         repository: ${{ inputs.repo }}
         token: ${{ secrets.GH_TOKEN }}
 
+    - name: Create short sha
+      run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+
+    - name: Set event vars if push
+      if: github.event_name == 'push'
+      run: |
+        echo "event_path=commit/${{ inputs.caller_sha }}" >> $GITHUB_ENV
+        echo "event_text=Push" >> $GITHUB_ENV
+        echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV
+
+    - name: Set env vars if none of the above
+      if: github.event_name != 'pull_request' && github.event_name != 'push'
+      run: |
+        echo "event_path=commit/${{ inputs.caller_sha }}" >> $GITHUB_ENV
+        echo "event_text=${{ github.event_name }}" >> $GITHUB_ENV
+        echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV        
+
     - name: Apply Helm template
       run: |
         helm repo add fdk https://informasjonsforvaltning.github.io/helm-chart/
@@ -67,6 +84,31 @@ jobs:
           kubectl --namespace=${{ inputs.environment }} rollout status deployment ${{ inputs.app_name }}
           exit 1
         fi
+
+    - name: Set slack message (if success)
+      if: always() && job.status == 'success'
+      run: |
+        echo "slack_emoji=:white_check_mark:" >> $GITHUB_ENV
+        echo "slack_text=Succeeded" >> $GITHUB_ENV
+        echo "slack_color=#2eb886" >> $GITHUB_ENV
+
+    - name: Set slack message (if failure)
+      if: always() && job.status == 'failure'
+      run: |
+        echo "slack_emoji=:no_entry:" >> $GITHUB_ENV
+        echo "slack_text=Failed" >> $GITHUB_ENV
+        echo "slack_color=#a30200" >> $GITHUB_ENV
+
+    - name: Notify all if failure in prod-workflow
+      if: always() && job.status == 'failure' && inputs.environment == 'prod'
+      run: echo "notify_all=@channel " >> $GITHUB_ENV
+
+    - name: Set slack message (if cancelled)
+      if: always() && job.status == 'cancelled'
+      run: |
+        echo "slack_emoji=:warning:" >> $GITHUB_ENV
+        echo "slack_text=Cancelled" >> $GITHUB_ENV
+        echo "slack_color=#daa038" >> $GITHUB_ENV
 
     - name: Notify slack
       id: slack
@@ -99,7 +141,7 @@ jobs:
                       },
                       {
                           "type": "mrkdwn",
-                          "text": "*Pull request:* \n<${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.number }} | ${{ github.ref_name }}>"
+                          "text": "*${{ env.event_text }}:* \n<${{ github.server_url }}/${{ github.repository }}/${{ env.event_path }} | ${{ env.event_name }}>"
                       }
                     ]
                   }
