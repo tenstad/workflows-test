@@ -1,6 +1,4 @@
-name: Deploy to ${{ inputs.environment }}
-
-#TODO: convert from maven to nox
+name: Reusable maven build, test, publish & deploy
 
 on:
   workflow_call:
@@ -17,11 +15,17 @@ on:
       environment:
         required: true
         type: string
+      cluster:
+        required: true
+        type: string
       actor:
         required: true
         type: string
-      java_version:
-        required: false
+      python_version:
+        required: true
+        type: string
+      python_architecture:
+        required: true
         type: string
     secrets:
       GH_TOKEN:
@@ -35,121 +39,206 @@ on:
 
 jobs:
   build-and-deploy:
-    name: Build and deploy to ${{ inputs.environment }} environment when pull request is created
+    name: Build, test, publish and deploy to ${{ inputs.environment }}
     runs-on: ubuntu-latest
+    env:
+      notify_all: ''
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-      with:
-        repository: ${{ inputs.repo }}
-        token: ${{ secrets.GH_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.GH_TOKEN }}
 
-    - name: Setup java jdk
-      if: ${{ inputs.java_version }}
-      uses: actions/setup-java@v1
-      with:
-        java-version: ${{ inputs.java_version }}
+      - name: Create short sha
+        run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
 
-    - name: Auth gcloud CLI for image-store
-      uses: google-github-actions/auth@main
-      with:
-        credentials_json: ${{ secrets.GCP_SA_DIGDIR_FDK_GCR_KEY }}
+      - name: Set event vars if PR
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "event_path=pull/${{ github.event.number }}" >> $GITHUB_ENV
+          echo "event_text=Pull request" >> $GITHUB_ENV
+          echo "event_name=${{ github.head_ref }}" >> $GITHUB_ENV
 
-    - name: Configure docker to use the gcloud command-line tool as a credential helper
-      run: gcloud auth configure-docker eu.gcr.io
+      - name: Set event vars if push
+        if: github.event_name == 'push'
+        run: |
+          echo "event_path=commit/${{ inputs.caller_sha }}" >> $GITHUB_ENV
+          echo "event_text=Push" >> $GITHUB_ENV
+          echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV
 
-    - name: Package & run tests with maven
-      run: mvn clean install --no-transfer-progress
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Set env vars if none of the above
+        if: github.event_name != 'pull_request' && github.event_name != 'push'
+        run: |
+          echo "event_path=commit/${{ inputs.caller_sha }}" >> $GITHUB_ENV
+          echo "event_text=${{ github.event_name }}" >> $GITHUB_ENV
+          echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV
 
-    - name: Cache Docker layers
-      uses: actions/cache@v2
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ inputs.caller_sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: ${{ inputs.python_architecture}}
 
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v1
+      - name: Auth gcloud CLI for image-store
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.GCP_SA_DIGDIR_FDK_GCR_KEY }}
 
-    - name: Docker meta
-      id: meta
-      uses: docker/metadata-action@v3
-      with:
-        images: eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}
-        flavor: |
-          latest=false
-        tags: |
-          type=raw,value=staging_latest
-          type=raw,value=${{ github.sha }},priority=1000
-          type=ref,event=branch
+      - name: Configure docker to use the gcloud command-line tool as a credential helper
+        run: gcloud auth configure-docker eu.gcr.io
 
-    - name: Build and push
-      id: docker_build
-      uses: docker/build-push-action@v2
-      with:
-        context: ./
-        file: ./Dockerfile
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache
-        build-args:  |
-          GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: .cache
+          key: ${{ runner.os }}-buildx-${{ inputs.caller_sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
-    - name: Apply Helm template
-      run: |
-        helm repo add fdk https://informasjonsforvaltning.github.io/helm-chart/
-        helm fetch --untar --untardir ./helm fdk/${{ inputs.app_name }}
-        helm template --set DOCKER_IMAGE_NAME="eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:${{ inputs.caller_sha }}" \
-        -f ./helm/${{ inputs.app_name }}/values/staging.yaml \
-        ./helm/${{ inputs.app_name }}/ > ./kubectlapply.yaml
-        chmod o+w ./kubectlapply.yaml
-        cat kubectlapply.yaml
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
 
-    - name: Auth gcloud CLI for deploy
-      uses: google-github-actions/auth@main
-      with:
-        credentials_json: ${{ secrets.DIGDIR_FDK_AUTODEPLOY }}
+      - name: Meta input
+        if: ${{ inputs.environment == 'prod' }}
+        run: |
+          echo "image_tag=latest" >> $GITHUB_ENV
+          echo "meta_flavor=true" >> $GITHUB_ENV
 
-    - name: Deploy to GCP & check status
-      run: |
-        gcloud container clusters get-credentials digdir-fdk-dev --region europe-north1-a --project digdir-fdk-dev
-        kubectl apply -f ./kubectlapply.yaml --force
-        if ! kubectl --namespace=staging rollout status deployment ${{ inputs.app_name }}; then
-          kubectl --namespace=staging rollout undo deployment ${{ inputs.app_name }}
-          kubectl --namespace=staging rollout status deployment ${{ inputs.app_name }}
-          exit 1
-        fi
+      - name: Meta input if not prod
+        if: ${{ inputs.environment != 'prod' }}
+        run: |
+          echo "image_tag=${{ inputs.environment }}_latest" >> $GITHUB_ENV
+          echo "meta_flavor=false" >> $GITHUB_ENV
 
-    - name: Notify slack
-      id: slack
-      uses: slackapi/slack-github-action@v1
-      with:
-        payload: |
-          {
-            "text": "GitHub Action deploy result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
-            "blocks": [
-              {
-              "type": "section",
-              "text": {
-                "type": "mrkdwn",
-                "text": "Application: ${{ inputs.app_name }} | Environment: ${{ inputs.environment }}\nAuthor: ${{ inputs.actor }}"
-              },          
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "GitHub Action deploy result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
-              }
-            ]
-          }
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-      if: always()
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}
+          flavor: |
+            latest=${{ env.meta_flavor }}
+          tags: |
+            type=raw,value=${{ env.image_tag }}
+            type=raw,value=${{ github.sha }},priority=1000
+            type=ref,event=branch         
+
+      - name: Install dependencies
+        run: |
+          pip install --constraint=.github/workflows/constraints.txt pip
+          pipx install --pip-args=--constraint=.github/workflows/constraints.txt poetry
+          pipx install --pip-args=--constraint=.github/workflows/constraints.txt nox
+          pipx inject --pip-args=--constraint=.github/workflows/constraints.txt nox nox-poetry
+
+      - name: Run tests with nox
+        run: nox
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=local,src=.cache
+          cache-to: type=local,dest=.cache
+          build-args:  |
+            GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
+
+      - name: Apply Helm template
+        run: |
+          helm repo add fdk https://informasjonsforvaltning.github.io/helm-chart/
+          helm fetch --untar --untardir ./helm fdk/${{ inputs.app_name }}
+          helm template --set DOCKER_IMAGE_NAME="eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:${{ inputs.caller_sha }}" \
+          -f ./helm/${{ inputs.app_name }}/values/${{ inputs.environment }}.yaml \
+          ./helm/${{ inputs.app_name }}/ > ./kubectlapply.yaml
+          chmod o+w ./kubectlapply.yaml
+          cat kubectlapply.yaml
+
+      - name: Auth gcloud CLI for deploy
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.DIGDIR_FDK_AUTODEPLOY }}
+
+      - name: Deploy to GCP & check status
+        run: |
+          gcloud container clusters get-credentials ${{ inputs.cluster }} --region europe-north1-a --project ${{ inputs.cluster }}
+          kubectl apply -f ./kubectlapply.yaml --force
+          if ! kubectl --namespace=${{ inputs.environment }} rollout status deployment ${{ inputs.app_name }}; then
+            kubectl --namespace=${{ inputs.environment }} rollout undo deployment ${{ inputs.app_name }}
+            kubectl --namespace=${{ inputs.environment }} rollout status deployment ${{ inputs.app_name }}
+            exit 1
+          fi
+
+      - name: Set slack message (if success)
+        if: always() && job.status == 'success'
+        run: |
+          echo "slack_emoji=:white_check_mark:" >> $GITHUB_ENV
+          echo "slack_text=Succeeded" >> $GITHUB_ENV
+          echo "slack_color=#2eb886" >> $GITHUB_ENV
+
+      - name: Set slack message (if failure)
+        if: always() && job.status == 'failure'
+        run: |
+          echo "slack_emoji=:no_entry:" >> $GITHUB_ENV
+          echo "slack_text=Failed" >> $GITHUB_ENV
+          echo "slack_color=#a30200" >> $GITHUB_ENV
+
+      - name: Notify all if failure in prod-workflow
+        if: always() && job.status == 'failure' && inputs.environment == 'prod'
+        run: echo "notify_all=@channel " >> $GITHUB_ENV
+
+      - name: Set slack message (if cancelled)
+        if: always() && job.status == 'cancelled'
+        run: |
+          echo "slack_emoji=:warning:" >> $GITHUB_ENV
+          echo "slack_text=Cancelled" >> $GITHUB_ENV
+          echo "slack_color=#daa038" >> $GITHUB_ENV
+
+      - name: Notify slack
+        id: slack
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "${{ env.slack_color }}",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "${{ env.notify_all }}${{ env.slack_emoji }} ${{ env.slack_text }} GitHub Actions\n*Application:* ${{ inputs.app_name }}\n*Environment:* ${{ inputs.environment }}"
+                      },
+                      "fields": [
+                        {
+                            "type": "mrkdwn",
+                            "text": "*commit:* \n<${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.caller_sha }} | ${{ env.SHORT_SHA }} >"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*author:* \n${{ inputs.actor }}"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*workflow:* \n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} | ${{ github.workflow }}>"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*${{ env.event_text }}:* \n<${{ github.server_url }}/${{ github.repository }}/${{ env.event_path }} | ${{ env.event_name }}>"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        if: always()

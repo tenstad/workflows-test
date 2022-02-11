@@ -22,7 +22,7 @@ on:
         required: true
         type: string
       java_version:
-        required: false
+        required: true
         type: string
     secrets:
       GH_TOKEN:
