@@ -1,4 +1,4 @@
-name: Reusable nox build, test, publish & deploy
+name: Reusable build, test, publish & deploy
 
 on:
   workflow_call:
@@ -19,12 +19,6 @@ on:
         required: true
         type: string
       actor:
-        required: true
-        type: string
-      python_version:
-        required: true
-        type: string
-      python_architecture:
         required: true
         type: string
     secrets:
@@ -75,12 +69,6 @@ jobs:
           echo "event_text=${{ github.event_name }}" >> $GITHUB_ENV
           echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ inputs.python_version }}
-          architecture: ${{ inputs.python_architecture}}
-
       - name: Auth gcloud CLI for image-store
         uses: google-github-actions/auth@v0
         with:
@@ -125,16 +113,6 @@ jobs:
             type=raw,value=${{ github.sha }},priority=1000
             type=ref,event=branch         
 
-      - name: Install dependencies
-        run: |
-          pip install --constraint=.github/workflows/constraints.txt pip
-          pipx install --pip-args=--constraint=.github/workflows/constraints.txt poetry
-          pipx install --pip-args=--constraint=.github/workflows/constraints.txt nox
-          pipx inject --pip-args=--constraint=.github/workflows/constraints.txt nox nox-poetry
-
-      - name: Run tests with nox
-        run: nox
-
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v2
@@ -144,8 +122,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=local,src=.cache
-          cache-to: type=local,dest=.cache
+          cache-from: type=local,src=.buildx-cache
+          cache-to: type=local,dest=.buildx-cache
           build-args:  |
             GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
 
