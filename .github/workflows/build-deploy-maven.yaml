@@ -207,7 +207,7 @@ jobs:
                     "fields": [
                       {
                           "type": "mrkdwn",
-                          "text": "*commit:* \n<${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.caller_sha }} | ${{ inputs.caller_sha::8 }} >"
+                          "text": "*commit:* \n<${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.caller_sha }} | ${ inputs.caller_sha::8 } >"
                       },
                       {
                           "type": "mrkdwn",
