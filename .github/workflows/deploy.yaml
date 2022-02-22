@@ -91,7 +91,7 @@ jobs:
         gcloud compute --project ${{ inputs.cluster }} disks snapshot "${{ inputs.snapshot_disk }}" \
         --snapshot-names "${{ inputs.snapshot_name }}-${{ env.SHORT_SHA }}" --zone "${{ inputs.snapshot_zone }}" &
         wait
-        gcloud compute --project ${{ inputs.cluster }} snapshots add-labels "${{ inputs.snapshot_name }}}-${{ env.SHORT_SHA }}" \
+        gcloud compute --project ${{ inputs.cluster }} snapshots add-labels "${{ inputs.snapshot_name }}-${{ env.SHORT_SHA }}" \
         --labels="snapshotdays="14""
 
     - name: Deploy to GCP & check status
