@@ -9,6 +9,9 @@ on:
       caller_sha:
         required: true
         type: string
+      caller_short_sha:
+        required: true
+        type: string
       repo:
         required: true
         type: string
@@ -207,7 +210,7 @@ jobs:
                     "fields": [
                       {
                           "type": "mrkdwn",
-                          "text": "*commit:* \n<${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.caller_sha }} | ${ inputs.caller_sha::8 } >"
+                          "text": "*commit:* \n<${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.caller_sha }} | ${{ inputs.caller_short_sha }} >"
                       },
                       {
                           "type": "mrkdwn",
