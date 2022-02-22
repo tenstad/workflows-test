@@ -51,9 +51,6 @@ jobs:
           repository: ${{ inputs.repo }}
           token: ${{ secrets.GH_TOKEN }}
 
-      - name: Create short sha
-        run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
-
       - name: Set event vars if PR
         if: github.event_name == 'pull_request'
         run: |
@@ -218,7 +215,7 @@ jobs:
                       "fields": [
                         {
                             "type": "mrkdwn",
-                            "text": "*commit:* \n<${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.caller_sha }} | ${{ env.SHORT_SHA }} >"
+                            "text": "*commit:* \n<${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.caller_sha }} | ${{ inputs.caller_sha::8 }} >"
                         },
                         {
                             "type": "mrkdwn",
