@@ -21,6 +21,15 @@ on:
       actor:
         required: true
         type: string
+      snapshot_disk:
+        required: false
+        type: string
+      snapshot_name:
+        required: false
+        type: string
+      snapshot_zone:
+        required: false
+        type: string
       python_version:
         required: true
         type: string
@@ -164,6 +173,15 @@ jobs:
         uses: google-github-actions/auth@v0
         with:
           credentials_json: ${{ secrets.DIGDIR_FDK_AUTODEPLOY }}
+
+      - name: Create snapshot if needed
+        if: ${{ inputs.snapshot_disk }}
+        run: |
+          gcloud compute --project ${{ inputs.cluster }} disks snapshot "${{ inputs.snapshot_disk }}" \
+          --snapshot-names "${{ inputs.snapshot_name }}-${{ env.SHORT_SHA }}" --zone "${{ inputs.snapshot_zone }}" &
+          wait
+          gcloud compute --project ${{ inputs.cluster }} snapshots add-labels "${{ inputs.snapshot_name }}}-${{ env.SHORT_SHA }}" \
+          --labels="snapshotdays="14""
 
       - name: Deploy to GCP & check status
         run: |
