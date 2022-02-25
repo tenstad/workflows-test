@@ -30,6 +30,10 @@ on:
       snapshot_zone:
         required: false
         type: string
+      dockerfile:
+        required: false
+        type: string
+        default: ./Dockerfile
     secrets:
       GH_TOKEN:
         required: true
@@ -127,7 +131,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: ./
-          file: ./Dockerfile
+          file: ${{ env.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
