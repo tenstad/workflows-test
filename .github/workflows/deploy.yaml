@@ -55,6 +55,12 @@ jobs:
     - name: Create short sha
       run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
 
+    - name: Set event vars if PR
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "event_path=pull/${{ github.event.number }}" >> $GITHUB_ENV
+        echo "event_text=Pull request" >> $GITHUB_ENV
+        echo "event_name=${{ github.head_ref }}" >> $GITHUB_ENV
 
     - name: Set event vars if push
       if: github.event_name == 'push'
