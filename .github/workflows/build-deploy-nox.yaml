@@ -39,6 +39,9 @@ on:
       set_es_map_count:
         required: false
         type: boolean
+      nox_image:
+        required: false
+        type: boolean
     secrets:
       GH_TOKEN:
         required: true
@@ -152,12 +155,28 @@ jobs:
       - name: Run tests with nox
         run: nox
 
-      - name: Tag and publish docker image to Google Cloud
+      - name: Tag and publish docker image to Google Cloud if built by nox
+        if: ${{ inputs.nox_image }}
         run: |
           docker tag eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:test eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:${{ inputs.caller_sha }}
           docker tag eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:test eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:${{ env.image_tag }}
           docker rmi eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:test
           docker -- push eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }} -a
+
+      - name: Build and push image if not handled by nox
+        if: !${{ inputs.nox_image }}
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=local,src=.cache
+          cache-to: type=local,dest=.cache
+          build-args: |
+            GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
 
       - name: Apply Helm template
         run: |
