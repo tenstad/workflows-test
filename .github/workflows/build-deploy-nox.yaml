@@ -152,19 +152,12 @@ jobs:
       - name: Run tests with nox
         run: nox
 
-      - name: Build and push
-        id: docker_build
-        uses: docker/build-push-action@v2
-        with:
-          context: ./
-          file: ./Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=local,src=.cache
-          cache-to: type=local,dest=.cache
-          build-args:  |
-            GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
+      - name: Tag and publish docker image to Google Cloud
+        run: |
+          docker tag eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:test eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:${{ inputs.caller_sha }}
+          docker tag eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:test eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:${{ env.image_tag }}
+          docker rmi eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:test
+          docker -- push eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }} -a
 
       - name: Apply Helm template
         run: |
