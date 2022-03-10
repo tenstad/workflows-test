@@ -149,7 +149,7 @@ jobs:
           pipx inject --pip-args=--constraint=.github/workflows/constraints.txt nox nox-poetry
 
       - name: Set max map count for elasticsearch if needed
-        if: ${{ env.set_es_map_count }}
+        if: ${{ inputs.set_es_map_count }}
         run: sudo sysctl -w vm.max_map_count=262144
 
       - name: Run tests with nox
@@ -164,7 +164,7 @@ jobs:
           docker -- push eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }} -a
 
       - name: Build and push image if not handled by nox
-        if: !${{ inputs.nox_image }}
+        if: ${{ !inputs.nox_image }}
         id: docker_build
         uses: docker/build-push-action@v2
         with:
