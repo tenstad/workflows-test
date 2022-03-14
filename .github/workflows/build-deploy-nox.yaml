@@ -42,6 +42,12 @@ on:
       nox_image:
         required: false
         type: boolean
+      nox_cmd:
+        required: false
+        type: string
+      nox_secret:
+        required: false
+        type: boolean
     secrets:
       GH_TOKEN:
         required: true
@@ -51,6 +57,8 @@ on:
         required: true
       SLACK_WEBHOOK_URL:
         required: true
+      API_KEY:
+        required: false
 
 jobs:
   build-and-deploy:
@@ -152,8 +160,15 @@ jobs:
         if: ${{ inputs.set_es_map_count }}
         run: sudo sysctl -w vm.max_map_count=262144
 
-      - name: Run tests with nox
-        run: nox
+      - name: Run tests with nox and input secrets
+        if: ${{ inputs.nox_secret }}
+        run: nox ${{ inputs.nox_cmd }}
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+
+      - name: Run tests with nox and no input secrets
+        if: ${{ !inputs.nox_secret }}
+        run: nox ${{ inputs.nox_cmd }}
 
       - name: Tag and publish docker image to Google Cloud if built by nox
         if: ${{ inputs.nox_image }}
