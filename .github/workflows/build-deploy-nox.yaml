@@ -37,7 +37,7 @@ on:
       dockerfile:
         required: false
         type: string
-        default: Dockerfile
+        default: ./Dockerfile
       python_version:
         required: true
         type: string
@@ -192,7 +192,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: ${{ inputs.dockerfile_context }}
-          file: ${{ inputs.dockerfile_context }}Dockerfile
+          file: ${{ inputs.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
