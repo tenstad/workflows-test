@@ -85,6 +85,7 @@ jobs:
       if: ${{ inputs.java_version }}
       uses: actions/setup-java@v3
       with:
+        distribution: 'zulu'
         java-version: ${{ inputs.java_version }}
 
     - name: Auth gcloud CLI for image-store
