@@ -144,7 +144,7 @@ jobs:
           type=raw,value=${{ github.sha }},priority=1000
           type=ref,event=branch         
 
-    - name: Build and push
+    - name: Build and push with custom env var
       if: ${{ inputs.build_env_name }}
       id: docker_build
       uses: docker/build-push-action@v2
