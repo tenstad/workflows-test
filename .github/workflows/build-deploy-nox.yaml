@@ -71,7 +71,7 @@ on:
         required: true
       SLACK_WEBHOOK_URL:
         required: true
-      API_KEY:
+      NOX_ENV_VALUE:
         required: false
 
 jobs:
@@ -178,7 +178,7 @@ jobs:
         if: ${{ inputs.nox_env }}
         run: nox ${{ inputs.nox_cmd }}
         env:
-          ${{ inputs.nox_env_name }}: ${{ inputs.nox_env_value }}
+          ${{ inputs.nox_env_name }}: ${{ secrets.nox_env_value }}
 
       - name: Run tests with nox and no input variables
         if: ${{ !inputs.nox_env }}
