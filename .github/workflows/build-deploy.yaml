@@ -34,6 +34,12 @@ on:
         required: false
         type: string
         default: Dockerfile
+      build_env_name:
+        required: false
+        type: string
+      build_env_value:
+        required: false
+        type: string
     secrets:
       GH_TOKEN:
         required: true
@@ -127,7 +133,7 @@ jobs:
             type=ref,event=branch         
 
       - name: Build and push
-        id: docker_build
+        if: ${{ !inputs.build_env_value }}
         uses: docker/build-push-action@v2
         with:
           context: ./
@@ -139,6 +145,21 @@ jobs:
           cache-to: type=local,dest=.buildx-cache
           build-args:  |
             GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
+
+      - name: Build (with build env) and push
+        if: ${{ inputs.build_env_value }}
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./${{ inputs.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=local,src=.buildx-cache
+          cache-to: type=local,dest=.buildx-cache
+          build-args:  |
+            GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
+            ${{ inputs.build_env_name }}=${{ inputs.build_env_value }}
 
       - name: Apply Helm template
         run: |
