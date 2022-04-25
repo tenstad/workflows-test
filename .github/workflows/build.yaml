@@ -28,12 +28,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.GH_TOKEN }}
 
       - name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          path: .cache
+          key: ${{ runner.os }}-buildx-${{ inputs.caller_sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
 
@@ -48,7 +51,9 @@ jobs:
           context: ./
           file: ./${{ inputs.dockerfile }}
           push: false
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: 'test_dev_build'
+          labels: 'dependabot'
+          cache-from: type=local,src=.buildx-cache
+          cache-to: type=local,dest=.buildx-cache
           build-args:  |
             GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
