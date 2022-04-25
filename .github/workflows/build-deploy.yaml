@@ -34,6 +34,9 @@ on:
         required: false
         type: string
         default: Dockerfile
+      build_env:
+        required: false
+        type: boolean
       build_env_name:
         required: false
         type: string
@@ -133,7 +136,7 @@ jobs:
             type=ref,event=branch         
 
       - name: Build and push
-        if: ${{ !inputs.build_env_value }}
+        if: ${{ !inputs.build_env }}
         uses: docker/build-push-action@v2
         with:
           context: ./
@@ -147,7 +150,7 @@ jobs:
             GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
 
       - name: Build (with build env) and push
-        if: ${{ inputs.build_env_value }}
+        if: ${{ inputs.build_env }}
         uses: docker/build-push-action@v2
         with:
           context: ./
