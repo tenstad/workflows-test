@@ -1,0 +1,91 @@
+name: Reusable rust test
+
+on:
+  workflow_call:
+    inputs:
+      repo:
+        required: true
+        type: string
+      toolchain_tc:
+        required: false
+        type: string
+        default: nightly
+      toolchain_override:
+        required: false
+        type: boolean
+        default: true
+      toolchain_profile:
+        required: false
+        type: string
+        default: minimal
+      cargo_command:
+        required: false
+        type: string
+        default: test
+      cargo_args:
+        required: false
+        type: string
+        default: --all
+      cargo_incremental:
+        required: false
+        type: string
+        default: '0'
+      cargo_rustflags:
+        required: false
+        type: string
+        default: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+      cargo_rustdocflags:
+        required: false
+        type: string
+        default: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+      grcov_config:
+        required: false
+        type: string
+        default: ./grcov.yml
+      codecov_files:
+        required: false
+        type: string
+        default: ./lcov.txt
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          override: ${{ inputs.override }}
+          profile: ${{ inputs.profile }}
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: ${{ inputs.cargo_command }}
+          args: ${{ inputs.cargo_args }}
+        env:
+          CARGO_INCREMENTAL: ${{ inputs.cargo_incremental }}
+          RUSTFLAGS: ${{ inputs.cargo_rustflags }}
+          RUSTDOCFLAGS: ${{ inputs.cargo_rustdocflags }}
+
+      - name: Test coverage
+        uses: actions-rs/grcov@v0.1
+        with:
+          config: ${{ inputs.grcov_config }}
+
+      - name: Codecov upload
+        uses: codecov/codecov-action@v2
+        with:
+          files:  ${{ inputs.codecov_files }}
