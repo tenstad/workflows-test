@@ -154,7 +154,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4
         with:
           images: eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}
           flavor: |
