@@ -1,4 +1,4 @@
-name: Reusable build, test, publish & deploy
+name: Reusable build & publish
 
 on:
   workflow_call:
