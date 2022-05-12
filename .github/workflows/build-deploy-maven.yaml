@@ -3,22 +3,35 @@ name: Reusable maven build, test, publish & deploy
 on:
   workflow_call:
     inputs:
+      actor:
+        required: true
+        type: string
       app_name:
         required: true
         type: string
+      build_env_name:
+        required: false
+        type: string
+      build_env_value:
+        required: false
+        type: string
+        default: ""
       caller_sha:
-        required: true
-        type: string
-      repo:
-        required: true
-        type: string
-      environment:
         required: true
         type: string
       cluster:
         required: true
         type: string
-      actor:
+      coverage_file_path:
+        required: false
+        type: string
+      environment:
+        required: true
+        type: string
+      java_version:
+        required: true
+        type: string
+      repo:
         required: true
         type: string
       snapshot_disk:
@@ -30,16 +43,6 @@ on:
       snapshot_zone:
         required: false
         type: string
-      java_version:
-        required: true
-        type: string
-      build_env_name:
-        required: false
-        type: string
-      build_env_value:
-        required: false
-        type: string
-        default: ""
     secrets:
       GH_TOKEN:
         required: true
@@ -56,6 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       notify_all: ''
+      skip_tests: ''
 
     steps:
     - name: Checkout
@@ -95,6 +99,16 @@ jobs:
         distribution: 'zulu'
         java-version: ${{ inputs.java_version }}
 
+    - name: Coverage test
+      if: ${{ inputs.coverage_file_path }}
+      run: mvn clean verify
+
+    - name: Coverage upload
+      if: ${{ inputs.coverage_file_path }}
+      uses: codecov/codecov-action@v2
+      with:
+        files: ${{ inputs.coverage_file_path }}
+
     - name: Auth gcloud CLI for image-store
       uses: google-github-actions/auth@v0
       with:
@@ -103,8 +117,12 @@ jobs:
     - name: Configure docker to use the gcloud command-line tool as a credential helper
       run: gcloud auth configure-docker eu.gcr.io
 
+    - name: Skip tests if coverage has been run
+      if: ${{ inputs.coverage_file_path }}
+      run: echo "skip_tests=-DskipTests" >> $GITHUB_ENV
+
     - name: Package & run tests with maven
-      run: mvn clean install --no-transfer-progress
+      run: mvn clean install --no-transfer-progress ${{ env.skip_tests }}
       env:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 

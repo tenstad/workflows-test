@@ -3,53 +3,29 @@ name: Reusable nox build, test, publish & deploy
 on:
   workflow_call:
     inputs:
+      actor:
+        required: true
+        type: string
       app_name:
         required: true
         type: string
       caller_sha:
         required: true
         type: string
-      repo:
-        required: true
-        type: string
-      environment:
-        required: true
-        type: string
       cluster:
         required: true
         type: string
-      actor:
-        required: true
-        type: string
-      snapshot_disk:
-        required: false
-        type: string
-      snapshot_name:
-        required: false
-        type: string
-      snapshot_zone:
-        required: false
-        type: string
-      dockerfile_context:
-        required: false
-        type: string
-        default: ./
       dockerfile:
         required: false
         type: string
         default: ./Dockerfile
-      python_version:
+      dockerfile_context:
+        required: false
+        type: string
+        default: ./
+      environment:
         required: true
         type: string
-      python_architecture:
-        required: true
-        type: string
-      set_es_map_count:
-        required: false
-        type: boolean
-      nox_image:
-        required: false
-        type: boolean
       nox_cmd:
         required: false
         type: string
@@ -61,6 +37,30 @@ on:
         type: string
         default: NO_VALUE
       nox_env_value:
+        required: false
+        type: string
+      nox_image:
+        required: false
+        type: boolean
+      python_version:
+        required: true
+        type: string
+      python_architecture:
+        required: true
+        type: string
+      repo:
+        required: true
+        type: string
+      set_es_map_count:
+        required: false
+        type: boolean
+      snapshot_disk:
+        required: false
+        type: string
+      snapshot_name:
+        required: false
+        type: string
+      snapshot_zone:
         required: false
         type: string
     secrets:

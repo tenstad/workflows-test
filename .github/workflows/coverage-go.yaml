@@ -1,0 +1,43 @@
+name: Reusable coverage for Go
+
+on:
+  workflow_call:
+    inputs:
+      coverage_file_path:
+        required: true
+        type: string
+      go_version:
+        required: true
+        type: string
+      repo:
+        required: true
+        type: string
+      test_path:
+        required: false
+        type: string
+        default: ./
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  coverage:
+    name: Run tests and upload coverage report to codecov
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ inputs.go_version }}
+
+      - name: Test
+        run: go test -v -race -coverpkg=./... -coverprofile=coverage.txt -covermode=atomic ${{ inputs.test_path }}
+      - uses: codecov/codecov-action@v2
+        with:
+          files: ${{ inputs.coverage_file_path }}

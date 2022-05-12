@@ -6,19 +6,6 @@ on:
       app_name:
         required: true
         type: string
-      caller_sha:
-        required: true
-        type: string
-      repo:
-        required: true
-        type: string
-      environment:
-        required: true
-        type: string
-      dockerfile:
-        required: false
-        type: string
-        default: Dockerfile
       build_env:
         required: false
         type: boolean
@@ -27,6 +14,19 @@ on:
         type: string
       build_env_value:
         required: false
+        type: string
+      caller_sha:
+        required: true
+        type: string
+      dockerfile:
+        required: false
+        type: string
+        default: Dockerfile
+      environment:
+        required: true
+        type: string
+      repo:
+        required: true
         type: string
     secrets:
       GH_TOKEN:

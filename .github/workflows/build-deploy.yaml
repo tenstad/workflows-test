@@ -3,22 +3,35 @@ name: Reusable build, test, publish & deploy
 on:
   workflow_call:
     inputs:
+      actor:
+        required: true
+        type: string
       app_name:
         required: true
         type: string
+      build_env:
+        required: false
+        type: boolean
+      build_env_name:
+        required: false
+        type: string
+      build_env_value:
+        required: false
+        type: string
       caller_sha:
-        required: true
-        type: string
-      repo:
-        required: true
-        type: string
-      environment:
         required: true
         type: string
       cluster:
         required: true
         type: string
-      actor:
+      dockerfile:
+        required: false
+        type: string
+        default: Dockerfile
+      environment:
+        required: true
+        type: string
+      repo:
         required: true
         type: string
       snapshot_disk:
@@ -28,19 +41,6 @@ on:
         required: false
         type: string
       snapshot_zone:
-        required: false
-        type: string
-      dockerfile:
-        required: false
-        type: string
-        default: Dockerfile
-      build_env:
-        required: false
-        type: boolean
-      build_env_name:
-        required: false
-        type: string
-      build_env_value:
         required: false
         type: string
     secrets:

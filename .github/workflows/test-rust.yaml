@@ -3,6 +3,34 @@ name: Reusable rust test
 on:
   workflow_call:
     inputs:
+      cargo_args:
+        required: false
+        type: string
+        default: --all
+      cargo_command:
+        required: false
+        type: string
+        default: test
+      cargo_incremental:
+        required: false
+        type: string
+        default: '0'
+      cargo_rustflags:
+        required: false
+        type: string
+        default: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+      cargo_rustdocflags:
+        required: false
+        type: string
+        default: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+      codecov_files:
+        required: false
+        type: string
+        default: ./lcov.txt
+      grcov_config:
+        required: false
+        type: string
+        default: ./grcov.yml
       repo:
         required: true
         type: string
@@ -18,34 +46,6 @@ on:
         required: false
         type: string
         default: minimal
-      cargo_command:
-        required: false
-        type: string
-        default: test
-      cargo_args:
-        required: false
-        type: string
-        default: --all
-      cargo_incremental:
-        required: false
-        type: string
-        default: '0'
-      cargo_rustflags:
-        required: false
-        type: string
-        default: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
-      cargo_rustdocflags:
-        required: false
-        type: string
-        default: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
-      grcov_config:
-        required: false
-        type: string
-        default: ./grcov.yml
-      codecov_files:
-        required: false
-        type: string
-        default: ./lcov.txt
     secrets:
       GH_TOKEN:
         required: true
