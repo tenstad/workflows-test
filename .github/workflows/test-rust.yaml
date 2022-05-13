@@ -66,9 +66,9 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ inputs.toolchain }}
-          override: ${{ inputs.override }}
-          profile: ${{ inputs.profile }}
+          toolchain: ${{ inputs.toolchain_tc }}
+          override: ${{ inputs.toolchain_override }}
+          profile: ${{ inputs.toolchain_profile }}
 
       - name: Run tests
         uses: actions-rs/cargo@v1
