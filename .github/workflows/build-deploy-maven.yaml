@@ -105,7 +105,7 @@ jobs:
 
     - name: Coverage upload
       if: ${{ inputs.coverage_file_path }}
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         files: ${{ inputs.coverage_file_path }}
 
