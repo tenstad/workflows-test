@@ -101,7 +101,7 @@ jobs:
 
     - name: Coverage test
       if: ${{ inputs.coverage_file_path }}
-      run: mvn clean verify
+      run: mvn clean verify --no-transfer-progress
 
     - name: Coverage upload
       if: ${{ inputs.coverage_file_path }}
