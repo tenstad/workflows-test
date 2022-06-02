@@ -32,8 +32,9 @@ on:
         type: string
         default: ./grcov.yml
       repo:
-        required: true
+        required: false
         type: string
+        default: ${{ github.repository }}
       toolchain_tc:
         required: false
         type: string
@@ -60,7 +61,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          repository: ${{ inputs.repo }}
+          repository: ${{ github.repository }}
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Install toolchain

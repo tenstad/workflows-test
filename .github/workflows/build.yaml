@@ -3,15 +3,18 @@ name: Reusable build
 on:
   workflow_call:
     inputs:
-      caller_sha:
-        required: true
-        type: string
       repo:
-        required: true
+        required: false
         type: string
+        default: ${{ github.repository }}
       actor:
-        required: true
+        required: false
         type: string
+        default: ${{ github.actor }}
+      caller_sha:
+        required: false
+        type: string
+        default: ${{ github.sha }}
       dockerfile:
         required: false
         type: string
@@ -29,14 +32,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          repository: ${{ inputs.repo }}
+          repository: ${{ github.repository }}
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Cache Docker layers
         uses: actions/cache@v3
         with:
           path: .cache
-          key: ${{ runner.os }}-buildx-${{ inputs.caller_sha }}
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
 
