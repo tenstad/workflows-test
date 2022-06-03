@@ -54,6 +54,9 @@ on:
         required: false
         type: string
         default: ${{ github.repository }}
+      run_safety:
+        required: false
+        type: boolean
       set_es_map_count:
         required: false
         type: boolean
@@ -94,7 +97,6 @@ jobs:
 
       - name: Create short sha
         run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
-
 
       - name: Set event vars if PR
         if: github.event_name == 'pull_request'
@@ -173,6 +175,27 @@ jobs:
           pipx install --pip-args=--constraint=.github/workflows/constraints.txt poetry
           pipx install --pip-args=--constraint=.github/workflows/constraints.txt nox
           pipx inject --pip-args=--constraint=.github/workflows/constraints.txt nox nox-poetry
+
+      - name: Run safety
+        id: safety
+        if: github.event_name == 'pull_request' && ${{ inputs.run_safety }}
+        run: |
+          OUTPUT=$(echo "$(nox -s safety)")
+          OUTPUT="${OUTPUT//'%'/'%25'}"
+          OUTPUT="${OUTPUT//$'\n'/'%0A'}"
+          OUTPUT="${OUTPUT//$'\r'/'%0D'}"
+          echo "::set-output name=result::$OUTPUT"
+
+      - name: Comment on PR with safety result
+        if: github.event_name == 'pull_request' && ${{ inputs.run_safety }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          header: Safety result
+          message: |
+            ```
+            ${{ steps.safety.outputs.result }}
+            ```
 
       - name: Set max map count for elasticsearch if needed
         if: ${{ inputs.set_es_map_count }}
