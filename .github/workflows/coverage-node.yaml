@@ -1,4 +1,4 @@
-name: Reusable coverage for Go
+name: Reusable coverage for Node
 
 on:
   workflow_call:
@@ -6,13 +6,9 @@ on:
       coverage_file_path:
         required: true
         type: string
-      go_version:
+      node_version:
         required: true
         type: string
-      test_path:
-        required: false
-        type: string
-        default: ./
     secrets:
       GH_TOKEN:
         required: true
@@ -24,20 +20,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          repository: ${{ github.repository }}
-          token: ${{ secrets.GH_TOKEN }}
 
-      - name: Set up Go
-        uses: actions/setup-go@v3.2.1
+      - name: Use Node.js ${{ inputs.node_version }}
+        uses: actions/setup-node@v2
         with:
-          go-version: ${{ inputs.go_version }}
-          cache: true
+          node-version: ${{ inputs.node_version }}
 
-      - name: Test
-        run: go test -v -race -coverpkg=./... -coverprofile=coverage.txt -covermode=atomic ${{ inputs.test_path }}
+      - name: npm install, lint, and test
+        run: |
+          npm ci
+          npm run lint:project
+          npm test
+        env:
+          CI: true
 
       - name: Report coverage
         uses: codecov/codecov-action@v3
         with:
           files: ${{ inputs.coverage_file_path }}
+          fail_ci_if_error: true

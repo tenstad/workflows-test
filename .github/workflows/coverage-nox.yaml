@@ -1,0 +1,44 @@
+name: Reusable coverage for Nox
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        required: true
+        type: string
+      python_architecture:
+        required: true
+        type: string
+      sessions:
+        required: true
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  coverage:
+    name: Run tests and upload coverage report to codecov
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: ${{ inputs.python_architecture}}
+
+      - name: Install dependencies
+        run: |
+          pip install --constraint=.github/workflows/constraints.txt pip
+          pipx install --pip-args=--constraint=.github/workflows/constraints.txt poetry
+          pipx install --pip-args=--constraint=.github/workflows/constraints.txt nox
+          pipx inject --pip-args=--constraint=.github/workflows/constraints.txt nox nox-poetry
+
+      - name: Test coverage
+        run: nox --sessions ${{ inputs.sessions }} coverage
