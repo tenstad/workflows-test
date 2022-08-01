@@ -12,10 +12,17 @@ on:
       sessions:
         required: true
         type: string
+      nox_env:
+        required: false
+        type: boolean
+      nox_env_name:
+        required: false
+        type: string
+        default: NO_VALUE
     secrets:
       GH_TOKEN:
         required: true
-      API_KEY:
+      NOX_ENV_VALUE:
         required: false
 
 jobs:
@@ -43,11 +50,11 @@ jobs:
           pipx inject --pip-args=--constraint=.github/workflows/constraints.txt nox nox-poetry
 
       - name: Test coverage (w/API_KEY)
-        if: ${{ secrets.API_KEY }}
+        if: ${{ inputs.nox_env }}
         run: nox --sessions ${{ inputs.sessions }} coverage
         env:
-          API_KEY: ${{ secrets.API_KEY }}
+          ${{ inputs.nox_env_name }}: ${{ secrets.NOX_ENV_VALUE }}
 
       - name: Test coverage
-        if: ${{ !secrets.API_KEY }}
+        if: ${{ !inputs.nox_env }}
         run: nox --sessions ${{ inputs.sessions }} coverage
