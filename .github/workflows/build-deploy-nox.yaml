@@ -38,9 +38,6 @@ on:
         required: false
         type: string
         default: NO_VALUE
-      nox_env_value:
-        required: false
-        type: string
       nox_image:
         required: false
         type: boolean
