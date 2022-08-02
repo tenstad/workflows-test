@@ -11,6 +11,7 @@ on:
     secrets:
       GH_TOKEN:
         required: true
+
 jobs:
   tests:
     runs-on: ubuntu-latest
