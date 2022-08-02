@@ -2,7 +2,7 @@ name: Run nox tests
 on:
   workflow_call:
     inputs:
-      python_versions:
+      python_version:
         required: true
         type: string
       python_architecture:
@@ -15,11 +15,7 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [${{ inputs.python_versions }}]
 
-    name: Python ${{ matrix.python-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -30,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ inputs.python_version }}
           architecture: ${{ inputs.python_architecture}}
 
       - name: Install dependencies
