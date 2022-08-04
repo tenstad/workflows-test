@@ -1,0 +1,51 @@
+name: Run safety
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        required: true
+        type: string
+      python_architecture:
+        required: true
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: ${{ inputs.python_architecture }}
+
+      - name: Install dependencies
+        run: |
+          pip install --constraint=.github/workflows/constraints.txt pip
+          pipx install --pip-args=--constraint=.github/workflows/constraints.txt poetry
+          pipx install --pip-args=--constraint=.github/workflows/constraints.txt nox
+          pipx inject --pip-args=--constraint=.github/workflows/constraints.txt nox nox-poetry
+
+      - name: Run safety
+        id: safety
+        run: |
+          OUTPUT=$(echo "$(nox -s safety)")
+          OUTPUT="${OUTPUT//'%'/'%25'}"
+          OUTPUT="${OUTPUT//$'\n'/'%0A'}"
+          OUTPUT="${OUTPUT//$'\r'/'%0D'}"
+          echo "::set-output name=result::$OUTPUT"
+
+      - name: Comment on PR with safety result
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: Safety result
+          message: |
+            ```
+            ${{ steps.safety.outputs.result }}
+            ```
