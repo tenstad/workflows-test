@@ -14,15 +14,15 @@ on:
       cargo_incremental:
         required: false
         type: string
-        default: '0'
+        default: "0"
       cargo_rustflags:
         required: false
         type: string
-        default: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+        default: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
       cargo_rustdocflags:
         required: false
         type: string
-        default: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+        default: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
       codecov_files:
         required: false
         type: string
@@ -47,6 +47,10 @@ on:
         required: false
         type: string
         default: minimal
+      docker_compose_file:
+        required: false
+        type: string
+        default: ./docker-compose.yaml
     secrets:
       GH_TOKEN:
         required: true
@@ -71,6 +75,18 @@ jobs:
           override: ${{ inputs.toolchain_override }}
           profile: ${{ inputs.toolchain_profile }}
 
+      - name: Check docker_compose_file existence
+        id: check_docker_compose
+        uses: andstor/file-existence-action@v1
+        with:
+          files: ${{ inputs.docker_compose_file }}
+
+      - name: Docker Compose
+        uses: isbang/compose-action@v1.1.0
+        if: steps.check_docker_compose.outputs.files_exists == 'true'
+        with:
+          compose-file: ${{ inputs.docker_compose_file }}
+
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -89,4 +105,4 @@ jobs:
       - name: Codecov upload
         uses: codecov/codecov-action@v3
         with:
-          files:  ${{ inputs.codecov_files }}
+          files: ${{ inputs.codecov_files }}
