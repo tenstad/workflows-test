@@ -55,6 +55,8 @@ on:
         required: true
       SLACK_WEBHOOK_URL:
         required: true
+      DEPENDABOT_SLACK_WEBHOOK_URL:
+        required: false
 
 jobs:
   build-and-deploy:
