@@ -82,7 +82,7 @@ jobs:
           files: ${{ inputs.docker_compose_file }}
 
       - name: Docker Compose
-        uses: isbang/compose-action@v1.1.0
+        uses: isbang/compose-action@v1.2.0
         if: steps.check_docker_compose.outputs.files_exists == 'true'
         with:
           compose-file: ${{ inputs.docker_compose_file }}
