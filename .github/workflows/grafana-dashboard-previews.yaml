@@ -1,0 +1,62 @@
+name: Deploy Grafana Dashboard Previews
+
+on:
+  workflow_call:
+    inputs:
+      file_path:
+        required: false
+        type: string
+        default: ./main.jsonnet
+      grafana_url:
+        required: true
+        type: string
+      snapshot_expiry_seconds:
+        required: false
+        type: number
+        default: 86400
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+      grafana_token:
+        required: true
+
+jobs:
+  deploy_grafana_dashboard_previews:
+    name: Deploy Grafana Dashboard Previews
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Grizzly
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        with:
+          repo: grafana/grizzly
+          platform: linux
+          arch: x86-64
+
+      - name: Create Snapshots
+        env:
+          GRAFANA_URL: ${{ secrets.grafana_url }}
+          GRAFANA_TOKEN: ${{ secrets.grafana_token }}
+        run: |
+          grr preview --expires ${{ snapshot_expiry_seconds }} ${{ file_path }} > urls
+          echo '::group::Grafana Preview'
+          cat urls
+          echo '::endgroup::'
+          echo 'PREVIEW_URLS<<EOF' >> $GITHUB_ENV
+          cat urls | grep view | sed 's/Dashboard\./[/;s/ view: /](/;s/$/)/') >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
+      - name: Comment Preview URLs in PR
+        uses: thollander/actions-comment-pull-request@v1
+        with:
+          message: |
+            Grafana Dashboard Previews:
+
+            ${{ env.PREVIEW_URLS }}
+          comment_includes: "Grafana Dashboard Previews:"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
