@@ -55,6 +55,8 @@ on:
         required: true
       SLACK_WEBHOOK_URL:
         required: true
+      DEPENDABOT_SLACK_WEBHOOK_URL:
+        required: false
 
 jobs:
   build-and-deploy:
@@ -62,6 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       notify_all: ''
+      slack_webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
       - name: Checkout
@@ -72,6 +75,10 @@ jobs:
 
       - name: Create short sha
         run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+
+      - name: Set slack webhook if dependabot
+        if: github.actor == 'dependabot[bot]'
+        run: echo "slack_webhook=${{ secrets.DEPENDABOT_SLACK_WEBHOOK_URL }}" >> $GITHUB_ENV
 
       - name: Set event vars if PR
         if: github.event_name == 'pull_request'
@@ -266,6 +273,6 @@ jobs:
               ]
             }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ env.slack_webhook }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
         if: always()
