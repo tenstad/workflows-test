@@ -77,7 +77,7 @@ jobs:
         run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
 
       - name: Set slack webhook if dependabot
-        if: ${{ github.actor == 'dependabot[bot]' }}
+        if: github.actor == 'dependabot[bot]'
         run: echo "slack_webhook=${{ secrets.DEPENDABOT_SLACK_WEBHOOK_URL }}" >> $GITHUB_ENV
 
       - name: Set event vars if PR
