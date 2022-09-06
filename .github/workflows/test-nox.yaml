@@ -36,4 +36,4 @@ jobs:
           pipx inject --pip-args=--constraint=.github/workflows/constraints.txt nox nox-poetry
 
       - name: Run tests
-        run: nox
+        run: nox --python ${{ inputs.python_version }}
