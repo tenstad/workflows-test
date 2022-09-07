@@ -34,7 +34,7 @@ jobs:
           pipx inject --pip-args=--constraint=.github/workflows/constraints.txt nox nox-poetry
 
       - name: Publish
-        run: | 
-          nox
+        run: |
+          nox --python ${{ inputs.python_version }}
           poetry build
           poetry publish --username=__token__ --password=${{ secrets.PYPI_TOKEN }}
