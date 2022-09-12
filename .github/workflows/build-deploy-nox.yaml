@@ -33,11 +33,24 @@ on:
         type: string
       nox_env:
         required: false
-        type: boolean
-      nox_env_name:
+        type: number
+        default: 0
+      nox_env_1_name:
         required: false
         type: string
-        default: NO_VALUE
+        default: default_1
+      nox_env_2_name:
+        required: false
+        type: string
+        default: default_2
+      nox_env_3_name:
+        required: false
+        type: string
+        default: default_3
+      nox_env_4_name:
+        required: false
+        type: string
+        default: default_4
       nox_image:
         required: false
         type: boolean
@@ -77,7 +90,13 @@ on:
         required: true
       DEPENDABOT_SLACK_WEBHOOK_URL:
         required: false
-      NOX_ENV_VALUE:
+      NOX_ENV_1_VALUE:
+        required: false
+      NOX_ENV_2_VALUE:
+        required: false
+      NOX_ENV_3_VALUE:
+        required: false
+      NOX_ENV_4_VALUE:
         required: false
 
 jobs:
@@ -205,15 +224,39 @@ jobs:
         if: ${{ inputs.set_es_map_count }}
         run: sudo sysctl -w vm.max_map_count=262144
 
-      - name: Run tests with nox and input env
-        if: ${{ inputs.nox_env }}
+      - name: Run tests with nox and no input variables
+        if: ${{ inputs.nox_env == 0 }}
+        run: nox ${{ inputs.nox_cmd }}
+
+      - name: Run tests with nox and one input env
+        if: ${{ inputs.nox_env == 1 }}
         run: nox ${{ inputs.nox_cmd }}
         env:
-          ${{ inputs.nox_env_name }}: ${{ secrets.NOX_ENV_VALUE }}
+          ${{ inputs.nox_env_1_name }}: ${{ secrets.NOX_ENV_1_VALUE }}
 
-      - name: Run tests with nox and no input variables
-        if: ${{ !inputs.nox_env }}
+      - name: Run tests with nox and two input env
+        if: ${{ inputs.nox_env == 2 }}
         run: nox ${{ inputs.nox_cmd }}
+        env:
+          ${{ inputs.nox_env_1_name }}: ${{ secrets.NOX_ENV_1_VALUE }}
+          ${{ inputs.nox_env_2_name }}: ${{ secrets.NOX_ENV_2_VALUE }}
+
+      - name: Run tests with nox and three input env
+        if: ${{ inputs.nox_env == 3 }}
+        run: nox ${{ inputs.nox_cmd }}
+        env:
+          ${{ inputs.nox_env_1_name }}: ${{ secrets.NOX_ENV_1_VALUE }}
+          ${{ inputs.nox_env_2_name }}: ${{ secrets.NOX_ENV_2_VALUE }}
+          ${{ inputs.nox_env_3_name }}: ${{ secrets.NOX_ENV_3_VALUE }}
+
+      - name: Run tests with nox and four input env
+        if: ${{ inputs.nox_env == 4 }}
+        run: nox ${{ inputs.nox_cmd }}
+        env:
+          ${{ inputs.nox_env_1_name }}: ${{ secrets.NOX_ENV_1_VALUE }}
+          ${{ inputs.nox_env_2_name }}: ${{ secrets.NOX_ENV_2_VALUE }}
+          ${{ inputs.nox_env_3_name }}: ${{ secrets.NOX_ENV_3_VALUE }}
+          ${{ inputs.nox_env_4_name }}: ${{ secrets.NOX_ENV_4_VALUE }}
 
       - name: Tag and publish docker image to Google Cloud if built by nox
         if: ${{ inputs.nox_image }}
