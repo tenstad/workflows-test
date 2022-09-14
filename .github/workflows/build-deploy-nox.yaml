@@ -28,6 +28,10 @@ on:
       environment:
         required: true
         type: string
+      node_version:
+        required: false
+        type: number
+        default: 0
       nox_cmd:
         required: false
         type: string
@@ -141,6 +145,12 @@ jobs:
           echo "event_path=commit/${{ github.sha }}" >> $GITHUB_ENV
           echo "event_text=${{ github.event_name }}" >> $GITHUB_ENV
           echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV
+
+      - name: Set up node (if required)
+        if: ${{ inputs.node_version > 0 }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node_version }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
