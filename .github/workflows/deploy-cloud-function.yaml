@@ -1,0 +1,187 @@
+name: Reusable deploy
+
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      entry_point:
+        required: true
+        type: string
+      go-version:
+        required: false
+        type: string
+        default: NO_VALUE
+      go-test-cmd:
+        required: false
+        type: string
+        default: NO_VALUE
+      max_instances:
+        required: false
+        type: number
+        default: 1
+      memory:
+        required: false
+        type: number
+        default: 256
+      region:
+        required: false
+        type: string
+        default: europe-west1
+      runtime:
+        required: true
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
+      DIGDIR_CLOUD_FUNCTIONS_SA_KEY:
+        required: true
+      SLACK_WEBHOOK_URL:
+        required: true
+      ENV_VARS:
+        required: true
+      DEPENDABOT_SLACK_WEBHOOK_URL:
+        required: false
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }} environment
+    runs-on: ubuntu-latest
+    env:
+      notify_all: ''
+      slack_webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    steps:
+    - name: Create short sha
+      run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+
+    - name: Set slack webhook if dependabot
+      if: github.actor == 'dependabot[bot]'
+      run: echo "slack_webhook=${{ secrets.DEPENDABOT_SLACK_WEBHOOK_URL }}" >> $GITHUB_ENV
+
+    - name: Set event vars if PR
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "event_path=pull/${{ github.event.number }}" >> $GITHUB_ENV
+        echo "event_text=Pull request" >> $GITHUB_ENV
+        echo "event_name=${{ github.head_ref }}" >> $GITHUB_ENV
+
+    - name: Set event vars if push
+      if: github.event_name == 'push'
+      run: |
+        echo "event_path=commit/${{ github.sha }}" >> $GITHUB_ENV
+        echo "event_text=Push" >> $GITHUB_ENV
+        echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV
+
+    - name: Set env vars if none of the above
+      if: github.event_name != 'pull_request' && github.event_name != 'push'
+      run: |
+        echo "event_path=commit/${{ github.sha }}" >> $GITHUB_ENV
+        echo "event_text=${{ github.event_name }}" >> $GITHUB_ENV
+        echo "event_name=${{ github.event.head_commit.message }}" | sed 1q >> $GITHUB_ENV
+
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: ${{ github.repository }}
+        token: ${{ secrets.GH_TOKEN }}
+
+    - name: Set up Go (if Go)
+      if: ${{ inputs.go-version }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Test (if Go)
+      if: ${{ inputs.go-test-cmd }}
+      run: go test ${{ inputs.go-test-cmd }}
+
+    - name: Auth gcloud CLI for deploy
+      uses: google-github-actions/auth@main
+      with:
+        credentials_json: ${{ secrets.DIGDIR_CLOUD_FUNCTIONS_SA_KEY }}
+
+    - name: Deploy
+      uses: google-github-actions/deploy-cloud-functions@main
+      with:
+        name: ${{ inputs.app_name }}
+        runtime: ${{ inputs.runtime }}
+        entry_point: ${{ inputs.entry_point }}
+        memory_mb: ${{ inputs.memory }}
+        region: ${{ inputs.region }}
+        max_instances: ${{ inputs.max_instances }}
+        env_vars: ${{ secrets.ENV_VARS }}
+        build_environment_variables: ${{ secrets.ENV_VARS }}
+
+    - name: Set slack message (if success)
+      if: always() && job.status == 'success'
+      run: |
+        echo "slack_emoji=:white_check_mark:" >> $GITHUB_ENV
+        echo "slack_text=Succeeded" >> $GITHUB_ENV
+        echo "slack_color=#2eb886" >> $GITHUB_ENV
+
+    - name: Set slack message (if failure)
+      if: always() && job.status == 'failure'
+      run: |
+        echo "slack_emoji=:no_entry:" >> $GITHUB_ENV
+        echo "slack_text=Failed" >> $GITHUB_ENV
+        echo "slack_color=#a30200" >> $GITHUB_ENV
+
+    - name: Notify all if failure in prod-workflow
+      if: always() && job.status == 'failure' && inputs.environment == 'prod'
+      run: echo "notify_all=@channel " >> $GITHUB_ENV
+
+    - name: Set slack message (if cancelled)
+      if: always() && job.status == 'cancelled'
+      run: |
+        echo "slack_emoji=:warning:" >> $GITHUB_ENV
+        echo "slack_text=Cancelled" >> $GITHUB_ENV
+        echo "slack_color=#daa038" >> $GITHUB_ENV
+
+    - name: Notify slack
+      id: slack
+      uses: slackapi/slack-github-action@v1
+      with:
+        payload: |
+          {
+            "attachments": [
+              {
+                "color": "${{ env.slack_color }}",
+                "blocks": [
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": "${{ env.notify_all }}${{ env.slack_emoji }} ${{ env.slack_text }} GitHub Actions\n*Application:* ${{ inputs.app_name }}\n*Environment:* ${{ inputs.environment }}"
+                    },
+                    "fields": [
+                      {
+                          "type": "mrkdwn",
+                          "text": "*commit:* \n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }} | ${{ env.SHORT_SHA }} >"
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": "*author:* \n${{ github.actor }}"
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": "*workflow:* \n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} | ${{ github.workflow }}>"
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": "*${{ env.event_text }}:* \n<${{ github.server_url }}/${{ github.repository }}/${{ env.event_path }} | ${{ env.event_name }}>"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ env.slack_webhook }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      if: always()
