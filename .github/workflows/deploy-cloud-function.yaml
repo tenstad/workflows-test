@@ -101,7 +101,7 @@ jobs:
       run: go test ${{ inputs.go-test-cmd }}
 
     - name: Auth gcloud CLI for deploy
-      uses: google-github-actions/auth@main
+      uses: google-github-actions/auth@v0
       with:
         credentials_json: ${{ secrets.DIGDIR_CLOUD_FUNCTIONS_SA_KEY }}
 
