@@ -220,7 +220,7 @@ jobs:
           echo "::set-output name=result::$OUTPUT"
 
       - name: Comment on PR with safety result
-        if: github.event_name == 'pull_request' && ${{ inputs.run_safety }} && github.actor != 'dependabot[bot]'
+        if: ${{ github.event_name == 'pull_request' && inputs.run_safety && github.actor != 'dependabot[bot]' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
