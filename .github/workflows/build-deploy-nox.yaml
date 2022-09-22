@@ -236,24 +236,24 @@ jobs:
 
       - name: Run tests with nox and no input variables
         if: ${{ inputs.nox_env == 0 }}
-        run: nox ${{ inputs.nox_cmd }}
+        run: nox --no-reuse-existing-virtualenvs ${{ inputs.nox_cmd }}
 
       - name: Run tests with nox and one input env
         if: ${{ inputs.nox_env == 1 }}
-        run: nox ${{ inputs.nox_cmd }}
+        run: nox --no-reuse-existing-virtualenvs ${{ inputs.nox_cmd }}
         env:
           ${{ inputs.nox_env_1_name }}: ${{ secrets.NOX_ENV_1_VALUE }}
 
       - name: Run tests with nox and two input env
         if: ${{ inputs.nox_env == 2 }}
-        run: nox ${{ inputs.nox_cmd }}
+        run: nox --no-reuse-existing-virtualenvs ${{ inputs.nox_cmd }}
         env:
           ${{ inputs.nox_env_1_name }}: ${{ secrets.NOX_ENV_1_VALUE }}
           ${{ inputs.nox_env_2_name }}: ${{ secrets.NOX_ENV_2_VALUE }}
 
       - name: Run tests with nox and three input env
         if: ${{ inputs.nox_env == 3 }}
-        run: nox ${{ inputs.nox_cmd }}
+        run: nox --no-reuse-existing-virtualenvs ${{ inputs.nox_cmd }}
         env:
           ${{ inputs.nox_env_1_name }}: ${{ secrets.NOX_ENV_1_VALUE }}
           ${{ inputs.nox_env_2_name }}: ${{ secrets.NOX_ENV_2_VALUE }}
@@ -261,7 +261,7 @@ jobs:
 
       - name: Run tests with nox and four input env
         if: ${{ inputs.nox_env == 4 }}
-        run: nox ${{ inputs.nox_cmd }}
+        run: nox --no-reuse-existing-virtualenvs ${{ inputs.nox_cmd }}
         env:
           ${{ inputs.nox_env_1_name }}: ${{ secrets.NOX_ENV_1_VALUE }}
           ${{ inputs.nox_env_2_name }}: ${{ secrets.NOX_ENV_2_VALUE }}
