@@ -310,7 +310,7 @@ jobs:
           gcloud container clusters get-credentials ${{ inputs.cluster }} --region europe-north1-a --project ${{ inputs.cluster }}
           helm repo add fdk https://informasjonsforvaltning.github.io/helm-chart/
           helm fetch --untar --untardir ./helm fdk/${{ inputs.app_name }}          
-          helm upgrade ${{ inputs.app_name }} fdk/${{ inputs.app_name }} -f ./helm/${{ inputs.app_name }}/values.yaml -f .helm/${{ inputs.app_name }}/values/${{ inputs.environment }}.yaml --install --wait
+          helm upgrade ${{ inputs.app_name }} fdk/${{ inputs.app_name }} -f ./helm/${{ inputs.app_name }}/values.yaml -f ./helm/${{ inputs.app_name }}/values/${{ inputs.environment }}.yaml --set DOCKER_IMAGE_NAME="eu.gcr.io/digdir-fdk-infra/${{ inputs.app_name }}:${{ github.sha }}" --install --wait
 
       - name: Set slack message (if success)
         if: always() && job.status == 'success'
