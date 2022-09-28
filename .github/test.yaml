@@ -1,0 +1,12 @@
+name: Multivar test
+
+on:
+  push: {}
+
+jobs:
+  multivar:
+    name: Multivar
+    uses: Informasjonsforvaltning/workflows/.github/workflows/multivar.yaml@test/at/multivar
+    with:
+      var_0: foo
+      var_1: bar
