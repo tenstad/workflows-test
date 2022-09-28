@@ -318,12 +318,9 @@ jobs:
       - name: Deploy to GCP & check status
         run: |
           gcloud container clusters get-credentials ${{ inputs.cluster }} --region europe-north1-a --project ${{ inputs.cluster }}
-          kubectl apply -f ./kubectlapply.yaml --force
-          if ! kubectl --namespace=${{ inputs.environment }} rollout status deployment ${{ inputs.app_name }}; then
-            kubectl --namespace=${{ inputs.environment }} rollout undo deployment ${{ inputs.app_name }}
-            kubectl --namespace=${{ inputs.environment }} rollout status deployment ${{ inputs.app_name }}
-            exit 1
-          fi
+          helm repo add fdk https://informasjonsforvaltning.github.io/helm-chart/
+          helm fetch --untar --untardir ./helm fdk/${{ inputs.app_name }}          
+          helm upgrade fdk/${{ inputs.app_name }} -f ./helm/values.yaml --install --wait
 
       - name: Set slack message (if success)
         if: always() && job.status == 'success'
